@@ -87,23 +87,81 @@
 
 ---
 
-## 7. Pushing to GitHub
+## 7. Working on Your Branch
 
-1. Keep installs clean — if you pip install something and don't use it:
+1. Before starting work each day, pull the latest `main` branch:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+2. Create or switch to your personal feature branch:
+   ```bash
+   git checkout -b yourname_feature
+   ```
+   If your branch already exists:
+   ```bash
+   git checkout yourname_feature
+   ```
+
+3. Do your work on your branch only. Never work directly on `main`.
+
+4. Keep installs clean. If you pip install something and don't use it:
    ```bash
    pip uninstall package_name
    ```
-2. Freeze requirements before pushing:
+
+5. Freeze requirements before pushing if dependencies changed:
    ```bash
    pip freeze > requirements.txt
    ```
-3. Commit and push:
+
+6. Commit and push your branch:
    ```bash
    git add .
    git commit -m "Brief description of changes"
-   git push origin main
+   git push origin yourname_feature
    ```
-4. You should be pushing at the end of each day you work. This ensures that whenever Jon or I do a code review, we are seeing your most up to date work. This is critical, because as we move forward, I will be absorbing your contributions into larger projects.
+
+7. You should push your branch at the end of each day you work. This ensures your latest work is visible for review.
+
+8. After pushing your branch, if you have done a sizable amount of work, you must create a Pull Request (PR) for review.
+
+### Creating a Pull Request (GitHub UI)
+
+1. Go to the repository on GitHub in your browser.
+
+2. You will see a banner that says your branch was recently pushed.
+
+3. Click:
+   ```text
+   Compare & pull request
+   ```
+
+4. Confirm the following:
+   ```text
+   base: main
+   compare: yourname_feature
+   ```
+
+5. Add:
+   - A clear title describing your changes
+   - A short description of what you implemented
+
+6. Click:
+   ```text
+   Create pull request
+   ```
+
+7. Your code will now be reviewed before being merged into `main`.
+
+---
+
+### Important
+
+- Pushing your branch makes your work visible.
+- Creating a Pull Request is required for review and merging into `main`.
+- All work must go through a Pull Request before being added to `main`.
 
 ## 8. Pulling from GitHub
 
@@ -144,6 +202,55 @@
    git push origin main
    ```
 
-## 9. Webhooks
+## 9. Syncing Your Branch with Main
+
+1. Before continuing work on an older branch, first update `main`:
+   ```bash
+   git checkout main
+   git pull origin main
+   ```
+
+2. Then switch back to your branch:
+   ```bash
+   git checkout yourname_feature
+   ```
+
+3. Merge the latest `main` into your branch:
+   ```bash
+   git merge main
+   ```
+
+4. If Git says there is a conflict, stop and resolve it before continuing. If you are unsure how to resolve a conflict, stop and ask before guessing.
+
+5. Open the file(s) Git lists as conflicted. Incoming code is the reviewed or updated code from `main` and is prioritized over old code unless there is a clear reason to preserve your version.
+
+6. Look for conflict markers that look like this:
+   ```text
+   <<<<<<< HEAD
+   your code
+   =======
+   incoming code
+   >>>>>>> main
+   ```
+
+7. Edit the file so that it contains the correct final code. Delete the conflict markers when you are done.
+
+8. Save the file, then stage the resolved file(s):
+   ```bash
+   git add .
+   ```
+
+9. Complete the merge:
+   ```bash
+   git commit
+   ```
+
+10. Push your updated branch:
+   ```bash
+   git push origin yourname_feature
+   ```
+
+
+## 10. Webhooks
 
 1. These must be setup in the platform itself and will forward to your ngrok. Your webhooks will not work until this is done. ie. you will not receive any data from the platform until this is setup.
