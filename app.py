@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify
 
 app = Flask(__name__)
-# JON TESTING
+# JON TESTING REDO
 # Health check
 @app.route('/', methods=['GET'])
 def health():
