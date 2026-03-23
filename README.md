@@ -18,7 +18,9 @@
    pip install -r requirements.txt
    ```
 
+
 ---
+
 
 ## 2. File Overview
 
@@ -31,10 +33,9 @@
 | `app.py` | Webhook endpoint (Flask) |
 | `DOCUMENTATION.md` | This file is where you will put all your documentation as you progress. You must delete or change items that become irrelevant or are no longer used. This document must be kept current, non-verbose and clean. Review documentation_guidelines.pdf on Sharepoint for in-depth instructions and expectations. |
 | `requirements.txt` | Pinned dependencies |
-| `project_report.pdf` | Project report |
+| `project_report.pdf` | Project report. This goes in your platform specific folder. |
 | `project_functions.py` | Platform-specific functions and logic OR dataset, cleaning, scaling, training and interpreting results logic. Review coding_guidelines.pdf on Sharepoint for in-depth instructions and expectations. |
 | `testing.py` | Tests for `project_functions.py` Review coding_guidelines.pdf on Sharepoint for in-depth instructions and expectations.|
-| `ingestion.py` | ONLY FOR MDQML. Functions to ingest your data. May or may not need to be made more robust for your dataset. If you make any changes to these functions, you must put it into EDITS.md. |
 
 ---
 

@@ -35,31 +35,7 @@ def webhook():
 
 
 # You will bind your ngrok to this port
-# (YOU CAN CHANGE PORT DEPENDING ON YOUR MACHINE
-# NEEDS, ie you have something else running on port 5000)
 if __name__ == '__main__':
 
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5121, debug=True)
 
-# NGROK SETUP
-
-# Navigate to:
-# www.ngrok.com
-
-# Create an account
-
-# Under Getting Started -> Setup & Installation
-# Choose your operating system
-# Follow instructions to 
-# install ngrok (ie MacOS, Linux or Windows)
-
-# After installation on your machine:
-# Under Universal Gateway -> Domains
-# Copy your domain
-# In terminal, run this command to bind to specific 
-# port on your machine using your domain:
-# ngrok http --domain=copy_your_domain_here 5000
-# (NOTE: This command works on Linux and MacOS, 
-# I'm unsure about Windows, but you can ask any LLM 
-# and it will convert for you if necessary.)
-# This will 
