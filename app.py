@@ -1,5 +1,8 @@
 
 from flask import Flask, request, jsonify
+import os
+
+nrok_url = os.getenv("NGROK_URL")
 
 app = Flask(__name__)
 # JON TESTING REDO
@@ -19,6 +22,8 @@ def webhook():
         # YOU MAY NEED TO UPDATE THIS SECTION 
         # DEPENDING ON YOUR PLATFORM
         data = request.get_json(silent=True)
+
+
         
         if data is None:
             data = request.data.decode('utf-8')

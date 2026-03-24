@@ -5,8 +5,8 @@
 
 1. Clone the repo and enter the folder:
    ```bash
-   git clone git@github.com:thinkbubble/TB_your_first_name.git
-   cd TB_your_first_name
+   git clone git@github.com:thinkbubble/TB_AgenticTooling.git
+   cd TB_AgenticTooling
    ```
 2. Create and activate virtual environment:
    ```bash
