@@ -1,37 +1,38 @@
-
 from flask import Flask, request, jsonify
 import os
+import stripe
+from dotenv import load_dotenv
 
-nrok_url = os.getenv("NGROK_URL")
+# Load environment variables
+load_dotenv()
 
+# Initialize Flask app
 app = Flask(__name__)
-# JON TESTING REDO
-#Making more changes testing
-# Health check
+
+# Stripe configuration
+stripe.api_key = os.getenv("MY_STRIPE_SECRET_KEY")
+endpoint_secret = os.getenv("STRIPE_ENDPOINT_SECRET")
+
+# =========================
+# Health Check Route
+# =========================
 @app.route('/', methods=['GET'])
 def health():
     return jsonify({"status": "running"}), 200
 
 
-# Webhook endpoint
-# Change your_service to the platform name you've been assigned.
+# =========================
+# Generic Webhook (Optional)
+# =========================
 @app.route('/webhook/your_service', methods=['POST'])
 def webhook():
     try:
-
-        # YOU MAY NEED TO UPDATE THIS SECTION 
-        # DEPENDING ON YOUR PLATFORM
         data = request.get_json(silent=True)
 
-
-        
         if data is None:
             data = request.data.decode('utf-8')
 
-        print("Received webhook:", data)
-
-        # THIS IS WHERE THE CODE TO PROCESS
-        # YOUR WEBHOOK WILL GO
+        print("Received generic webhook:", data)
 
         return jsonify({"status": "success"}), 200
 
@@ -40,8 +41,41 @@ def webhook():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-# You will bind your ngrok to this port
+# =========================
+# Stripe Webhook
+# =========================
+@app.route("/stripe-webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get("Stripe-Signature")
+
+    try:
+        # Verify webhook signature (IMPORTANT)
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+
+    except ValueError:
+        print("Invalid payload")
+        return jsonify({"error": "Invalid payload"}), 400
+
+    except stripe.error.SignatureVerificationError:
+        print("Invalid signature")
+        return jsonify({"error": "Invalid signature"}), 400
+
+    # Import here to avoid circular imports
+    from functions import handle_stripe_event
+
+    # Process event
+    handle_stripe_event(event)
+
+    return jsonify({"status": "success"}), 200
+
+
+# =========================
+# Run Server
+# =========================
 if __name__ == '__main__':
-
-    app.run(host='0.0.0.0', port=5121, debug=True)
-
+    port = 5121
+    print(f" Server running on http://127.0.0.1:{port}")
+    app.run(port=port, debug=True)
