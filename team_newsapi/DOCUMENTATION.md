@@ -1,0 +1,55 @@
+# Functions
+
+- Function 1: fetch_top_headlines
+    - Definition: Fetch top headlines based on country, category, or sources.
+    - Params:
+        - Country
+            - Country code
+            - Example: US, UK, etc.
+        - Category
+            - News category
+            - Example: Sports, Politics, Health, Technology, Business, Entertainment, Science, General, etc.
+        - Sources 
+            - Specific news sources to fetch from
+            - Example: BBC, CNN, DailyMail, NBC News, Fox etc.
+        - Page Size 
+            - Number of articles to return
+            - Default: 10
+            - Example: 10, 20,...,etc.
+    - Returns a list of  top headlines
+
+- Function 2: fetch_everything
+    - Definition: Search for news articles using keywords and filters such as date, language, and sorting options.
+    - Params:
+        - (q) 
+            - Search keyword or phrases
+            - Example: AI, Technology, stocks, etc.
+        - From Date 
+            - Start date
+            - Format: YYYY-MM-DD
+        - To Date 
+            - End date
+            - Format: YYYY-MM-DD
+        - Language: 
+            - Language code
+            - Default: en
+            - Example: en, es, fr, de, etc.
+        - Sort By:
+            - Sorting method
+            - Options: relevancy, chronological, popularity, etc. 
+    - Returns a response containing matching articles
+        
+- Function 3: fetch_sources
+    - Definition: Access a list of available news sources
+    - Params:
+        - Category: 
+            - News category
+            - Example: Sports, Politics, Health, Technology, Business, Entertainment, Science, General, etc.
+        - Language: 
+            - Language code
+            - Default: en
+            - Example: en, es, fr, de, etc.
+        - Country 
+            - Country code
+            - Example: US, UK, etc.
+    - Returns a response containing available news sources
