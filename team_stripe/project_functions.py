@@ -107,3 +107,14 @@ def print_payment_details(payment_intent):
     print(f"Amount       : {payment_intent.amount}")
     print(f"Currency     : {payment_intent.currency}")
     print(f"Status       : {payment_intent.status}")
+
+def handle_stripe_event(event):
+    event_type = event['type']
+
+    if event_type == 'checkout.session.completed':
+        session = event['data']['object']
+        print("Payment succeeded for:", session.get('customer_email'))
+
+    elif event_type == 'invoice.payment_failed':
+        invoice = event['data']['object']
+        print("Payment failed for:", invoice.get('customer_email'))   
