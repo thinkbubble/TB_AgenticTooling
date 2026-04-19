@@ -8,11 +8,7 @@ from project_functions import (
     select_best_rate,
     buy_label,
     track_shipment,
-    print_rates,
     print_shipment_details,
-    shipment_to_dict,
-    tracker_to_dict,
-    address_to_dict,
 )
 
 from_address = {
@@ -32,7 +28,7 @@ to_address = {
     "city": "San Francisco",
     "state": "CA",
     "zip": "94107",
-    "country": "US",  # Change to "CA" to test international shipping
+    "country": "US",   # Change to "CA" to test international
     "phone": "4155553434",
     "email": "receiver@example.com",
 }
@@ -64,12 +60,11 @@ customs_items = [
 ]
 
 preferred_carriers = ["USPS", "UPS"]
-preferred_services = []   # Example: ["Priority", "Ground Advantage"]
-max_rate = 25.00
+preferred_service = None
 max_delivery_days = 5
 insurance_amount = "100.00"
 
-# EasyPost-approved test tracking number for sandbox testing
+# EasyPost sandbox-approved test tracking number
 test_tracking_code = "EZ1000000001"
 
 
@@ -86,11 +81,12 @@ def main():
         verified_from = validate_address(from_address, strict=True)
         verified_to = validate_address(to_address, strict=True)
 
-        pretty_print("Verified From Address", address_to_dict(verified_from))
-        pretty_print("Verified To Address", address_to_dict(verified_to))
+        pretty_print("Verified From Address", verified_from)
+        pretty_print("Verified To Address", verified_to)
 
         print("\nStep 2: Determining shipment type...")
 
+        customs_info = None
         if is_international(from_address, to_address):
             print("International shipment detected.")
 
@@ -102,59 +98,47 @@ def main():
                 restriction_type="none",
             )
 
-            shipment = create_shipment(
-                from_address=from_address,
-                to_address=to_address,
-                parcel=parcel,
-                customs_info=customs_info,
-            )
+            pretty_print("Customs Info", customs_info)
         else:
             print("Domestic shipment detected.")
 
-            shipment = create_shipment(
-                from_address=from_address,
-                to_address=to_address,
-                parcel=parcel,
-            )
+        shipment = create_shipment(
+            from_address=from_address,
+            to_address=to_address,
+            parcel=parcel,
+            customs_info=customs_info,
+            verify_addresses=False,
+        )
 
-        print(f"\nStep 3: Shipment created successfully: {shipment.id}")
+        print(f"\nStep 3: Shipment created successfully: {shipment['shipment_id']}")
+        print_shipment_details(shipment)
+        pretty_print("Shipment JSON", shipment)
 
-        print_rates(shipment)
-
-        print("\nStep 4: Selecting best rate based on business rules...")
+        print("\nStep 4: Selecting best rate...")
 
         selected_rate = select_best_rate(
             shipment=shipment,
-            preferred_carriers=preferred_carriers or None,
-            preferred_services=preferred_services or None,
-            max_rate=max_rate,
+            preferred_carriers=preferred_carriers,
             max_delivery_days=max_delivery_days,
+            preferred_service=preferred_service,
+            cheapest=True,
         )
 
-        pretty_print(
-            "Selected Rate",
-            {
-                "carrier": getattr(selected_rate, "carrier", None),
-                "service": getattr(selected_rate, "service", None),
-                "rate": getattr(selected_rate, "rate", None),
-                "currency": getattr(selected_rate, "currency", None),
-                "delivery_days": getattr(selected_rate, "delivery_days", None),
-            },
-        )
+        pretty_print("Selected Rate", selected_rate)
 
         print("\nStep 5: Buying label...")
 
         bought_shipment = buy_label(
-            shipment_id=shipment.id,
+            shipment_id=shipment["shipment_id"],
             rate=selected_rate,
             insurance_amount=insurance_amount,
         )
 
         print("\nLabel purchased successfully.")
         print_shipment_details(bought_shipment)
-        pretty_print("Shipment JSON", shipment_to_dict(bought_shipment))
+        pretty_print("Bought Shipment JSON", bought_shipment)
 
-        tracking_code = getattr(bought_shipment, "tracking_code", None)
+        tracking_code = bought_shipment.get("tracking_code")
 
         print("\nStep 6: Tracking setup...")
 
@@ -163,27 +147,25 @@ def main():
 
             try:
                 tracker = track_shipment(tracking_code=tracking_code)
-                pretty_print("Tracker JSON", tracker_to_dict(tracker))
+                pretty_print("Tracker JSON", tracker)
+
             except RuntimeError as exc:
                 print("\nTracker creation skipped for shipment tracking code in EasyPost test mode.")
                 print(str(exc))
                 print(f"\nTrying EasyPost sandbox test tracking code instead: {test_tracking_code}")
 
                 sandbox_tracker = track_shipment(tracking_code=test_tracking_code)
-                pretty_print("Sandbox Tracker JSON", tracker_to_dict(sandbox_tracker))
+                pretty_print("Sandbox Tracker JSON", sandbox_tracker)
+
         else:
             print("No shipment tracking code available yet.")
             print(f"\nTrying EasyPost sandbox test tracking code instead: {test_tracking_code}")
 
             sandbox_tracker = track_shipment(tracking_code=test_tracking_code)
-            pretty_print("Sandbox Tracker JSON", tracker_to_dict(sandbox_tracker))
+            pretty_print("Sandbox Tracker JSON", sandbox_tracker)
 
     except ValueError as exc:
         print("\nValidation Error:")
-        print(str(exc))
-
-    except LookupError as exc:
-        print("\nLookup Error:")
         print(str(exc))
 
     except RuntimeError as exc:
