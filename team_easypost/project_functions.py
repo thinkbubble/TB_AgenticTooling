@@ -1,15 +1,9 @@
 import os
-import sys
 import logging
 from typing import Any, Dict, Optional, List
 
 import easypost
 from dotenv import load_dotenv
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
-
-from helper import *  # noqa: F401,F403
 
 load_dotenv()
 
@@ -21,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # -------------------------------------------------------------------
 # Config
-# -------------------------------------------------------------------
+# -----------------------------------------------------------------
 EASYPOST_API_KEY_ENV = "EASYPOST_API_KEY"
 
 
@@ -31,12 +25,6 @@ EASYPOST_API_KEY_ENV = "EASYPOST_API_KEY"
 def get_client() -> easypost.EasyPostClient:
     """
     Create and return an EasyPost client using the API key from .env.
-
-    Returns:
-        EasyPostClient: Authenticated EasyPost client.
-
-    Raises:
-        ValueError: If API key is missing.
     """
     api_key = os.getenv(EASYPOST_API_KEY_ENV)
     if not api_key:
@@ -49,17 +37,7 @@ def get_client() -> easypost.EasyPostClient:
 # -------------------------------------------------------------------
 def is_international(from_address: Dict[str, Any], to_address: Dict[str, Any]) -> bool:
     """
-    Return True if the shipment crosses country borders.
-
-    Args:
-        from_address: Sender address dictionary.
-        to_address: Receiver address dictionary.
-
-    Returns:
-        bool: True if countries differ, else False.
-
-    Raises:
-        ValueError: If either address is missing country.
+    Return True if shipment crosses country borders.
     """
     from_country = str(from_address.get("country", "")).strip().upper()
     to_country = str(to_address.get("country", "")).strip().upper()
@@ -73,14 +51,6 @@ def is_international(from_address: Dict[str, Any], to_address: Dict[str, Any]) -
 def validate_required_fields(data: Dict[str, Any], required_fields: List[str], object_name: str) -> None:
     """
     Validate required fields in a dictionary.
-
-    Args:
-        data: Input dictionary.
-        required_fields: List of required keys.
-        object_name: Logical object name for error messages.
-
-    Raises:
-        ValueError: If any required field is missing or empty.
     """
     for field in required_fields:
         value = data.get(field)
@@ -91,12 +61,6 @@ def validate_required_fields(data: Dict[str, Any], required_fields: List[str], o
 def validate_parcel(parcel: Dict[str, Any]) -> None:
     """
     Validate parcel dimensions and weight.
-
-    Args:
-        parcel: Parcel dictionary containing length, width, height, weight.
-
-    Raises:
-        ValueError: If parcel fields are missing or invalid.
     """
     required_fields = ["length", "width", "height", "weight"]
     validate_required_fields(parcel, required_fields, "parcel")
@@ -112,13 +76,7 @@ def validate_parcel(parcel: Dict[str, Any]) -> None:
 
 def validate_address_input(address: Dict[str, Any]) -> None:
     """
-    Validate minimum required address fields before EasyPost verification.
-
-    Args:
-        address: Address dictionary.
-
-    Raises:
-        ValueError: If required fields are missing.
+    Validate minimum required address fields.
     """
     required_fields = ["street1", "city", "state", "zip", "country"]
     validate_required_fields(address, required_fields, "address")
@@ -130,25 +88,7 @@ def validate_address(
     verify_carrier: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Create and verify an address in EasyPost.
-
-    strict=True:
-        EasyPost raises an error if verification fails.
-
-    strict=False:
-        EasyPost returns an address object with verification results.
-
-    Args:
-        address: Address dictionary.
-        strict: Whether verification should fail hard.
-        verify_carrier: Optional carrier-specific verification.
-
-    Returns:
-        Dict[str, Any]: Structured verified address.
-
-    Raises:
-        ValueError: If address input is incomplete.
-        RuntimeError: If EasyPost verification fails.
+    Create and verify an address in EasyPost, returning a clean dictionary.
     """
     validate_address_input(address)
     client = get_client()
@@ -202,21 +142,7 @@ def create_customs_info(
 ) -> Dict[str, Any]:
     """
     Create customs info for international shipments.
-
-    Args:
-        items: List of customs item dictionaries.
-        customs_signer: Name of customs signer.
-        contents_type: Type of shipment contents.
-        non_delivery_option: Action if shipment is undeliverable.
-        restriction_type: Restriction type.
-        eel_pfc: Optional export code.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing customs_info_id.
-
-    Raises:
-        ValueError: If customs input is invalid.
-        RuntimeError: If customs creation fails.
+    Returns {"customs_info_id": "..."}.
     """
     if not items:
         raise ValueError("At least one customs item is required for international shipments.")
@@ -280,23 +206,10 @@ def create_shipment(
     parcel: Dict[str, Any],
     customs_info: Optional[Dict[str, Any]] = None,
     verify_addresses: bool = False,
-) -> Dict[str, Any]:
+):
     """
-    Create an EasyPost shipment with automatic international validation logic.
-
-    Args:
-        from_address: Sender address dictionary.
-        to_address: Receiver address dictionary.
-        parcel: Parcel dictionary.
-        customs_info: Optional customs info dictionary like {"customs_info_id": "..."}.
-        verify_addresses: If True, validates addresses before shipment creation.
-
-    Returns:
-        Dict[str, Any]: Structured shipment dictionary.
-
-    Raises:
-        ValueError: If required input is missing or invalid.
-        RuntimeError: If shipment creation fails.
+    Create an EasyPost shipment and return the RAW EasyPost shipment object.
+    This matches your current app.py.
     """
     if not from_address:
         raise ValueError("from_address is required.")
@@ -305,6 +218,8 @@ def create_shipment(
     if not parcel:
         raise ValueError("parcel is required.")
 
+    validate_address_input(from_address)
+    validate_address_input(to_address)
     validate_parcel(parcel)
 
     shipment_from_address = from_address
@@ -316,55 +231,55 @@ def create_shipment(
 
     international = is_international(shipment_from_address, shipment_to_address)
 
-    if international and not customs_info:
-        raise ValueError("customs_info is required for international shipments.")
-
     client = get_client()
 
     shipment_data = {
-        "from_address": from_address,
-        "to_address": to_address,
+        "from_address": shipment_from_address,
+        "to_address": shipment_to_address,
         "parcel": parcel,
     }
 
-    if international and customs_info:
+    if international:
+        if not customs_info:
+            raise ValueError("customs_info is required for international shipments.")
+
         customs_info_id = customs_info.get("customs_info_id") or customs_info.get("id")
         if not customs_info_id:
             raise ValueError("customs_info must include 'customs_info_id' or 'id'.")
+
         shipment_data["customs_info"] = {"id": customs_info_id}
 
     try:
         shipment = client.shipment.create(**shipment_data)
         logger.info("Shipment created successfully.")
-        return shipment_to_dict(shipment)
+        return shipment
+
     except ValueError:
         raise
     except Exception as exc:
         raise RuntimeError(f"Shipment creation failed: {exc}") from exc
 
 
-def get_available_rates(shipment: Dict[str, Any]) -> List[Dict[str, Any]]:
+def get_available_rates(shipment: Any) -> List[Dict[str, Any]]:
     """
-    Extract and normalize shipment rates.
-
-    Args:
-        shipment: Structured shipment dictionary.
-
-    Returns:
-        List[Dict[str, Any]]: List of normalized rate dictionaries.
+    Extract and normalize shipment rates from either a dict or raw EasyPost object.
     """
-    rates = shipment.get("rates", [])
+    if isinstance(shipment, dict):
+        rates = shipment.get("rates", []) or []
+    else:
+        rates = getattr(shipment, "rates", []) or []
+
     normalized_rates = []
 
     for rate in rates:
         normalized_rates.append(
             {
-                "id": rate.get("id"),
-                "carrier": rate.get("carrier"),
-                "service": rate.get("service"),
-                "rate": safe_float(rate.get("rate")),
-                "currency": rate.get("currency"),
-                "delivery_days": rate.get("delivery_days"),
+                "id": _get_value(rate, "id"),
+                "carrier": _get_value(rate, "carrier"),
+                "service": _get_value(rate, "service"),
+                "rate": safe_float(_get_value(rate, "rate")),
+                "currency": _get_value(rate, "currency"),
+                "delivery_days": _get_value(rate, "delivery_days"),
             }
         )
 
@@ -372,27 +287,15 @@ def get_available_rates(shipment: Dict[str, Any]) -> List[Dict[str, Any]]:
 
 
 def select_best_rate(
-    shipment: Dict[str, Any],
+    shipment: Any,
     preferred_carriers: Optional[List[str]] = None,
     preferred_service: Optional[str] = None,
     max_delivery_days: Optional[int] = None,
     cheapest: bool = True,
 ) -> Dict[str, Any]:
     """
-    Select the best matching shipment rate.
-
-    Args:
-        shipment: Structured shipment dictionary.
-        preferred_carriers: Optional allowed carriers.
-        preferred_service: Optional preferred service type.
-        max_delivery_days: Optional max delivery time.
-        cheapest: If True, pick cheapest among matches.
-
-    Returns:
-        Dict[str, Any]: Selected rate dictionary.
-
-    Raises:
-        ValueError: If shipment has no rates or no rates match filters.
+    Select the best matching rate from a shipment.
+    Works with raw EasyPost shipment object or dict.
     """
     rates = get_available_rates(shipment)
 
@@ -433,11 +336,9 @@ def select_best_rate(
         raise ValueError("Matched rates exist, but none have a valid numeric price.")
 
     if cheapest:
-        best_rate = min(filtered_rates, key=lambda r: r["rate"])
-    else:
-        best_rate = filtered_rates[0]
+        return min(filtered_rates, key=lambda r: r["rate"])
 
-    return best_rate
+    return filtered_rates[0]
 
 
 # -------------------------------------------------------------------
@@ -447,21 +348,9 @@ def buy_label(
     shipment_id: str,
     rate: Dict[str, Any],
     insurance_amount: Optional[str] = None,
-) -> Dict[str, Any]:
+):
     """
-    Buy a shipping label for a shipment.
-
-    Args:
-        shipment_id: EasyPost shipment ID.
-        rate: Selected rate dictionary.
-        insurance_amount: Optional insurance amount string, like "100.00".
-
-    Returns:
-        Dict[str, Any]: Structured shipment dictionary after label purchase.
-
-    Raises:
-        ValueError: If shipment_id or rate is missing.
-        RuntimeError: If label purchase fails.
+    Buy a shipping label and return the RAW EasyPost shipment object.
     """
     if not shipment_id:
         raise ValueError("shipment_id is required.")
@@ -473,23 +362,22 @@ def buy_label(
         raise ValueError("Selected rate must include 'id'.")
 
     client = get_client()
-    rate_payload = {"id": rate_id}
 
     try:
         if insurance_amount:
             bought_shipment = client.shipment.buy(
                 shipment_id,
-                rate=rate_payload,
+                rate={"id": rate_id},
                 insurance=insurance_amount,
             )
         else:
             bought_shipment = client.shipment.buy(
                 shipment_id,
-                rate=rate_payload,
+                rate={"id": rate_id},
             )
 
         logger.info("Label purchased successfully.")
-        return shipment_to_dict(bought_shipment)
+        return bought_shipment
 
     except ValueError:
         raise
@@ -497,20 +385,9 @@ def buy_label(
         raise RuntimeError(f"Label purchase failed: {exc}") from exc
 
 
-def insure_existing_shipment(shipment_id: str, insurance_amount: str) -> Dict[str, Any]:
+def insure_existing_shipment(shipment_id: str, insurance_amount: str):
     """
-    Add insurance to an already created shipment.
-
-    Args:
-        shipment_id: EasyPost shipment ID.
-        insurance_amount: Insurance amount string.
-
-    Returns:
-        Dict[str, Any]: Structured shipment dictionary.
-
-    Raises:
-        ValueError: If shipment_id or insurance_amount is missing.
-        RuntimeError: If insurance update fails.
+    Add insurance to an already created shipment and return raw object.
     """
     if not shipment_id:
         raise ValueError("shipment_id is required.")
@@ -525,27 +402,17 @@ def insure_existing_shipment(shipment_id: str, insurance_amount: str) -> Dict[st
             amount=insurance_amount,
         )
         logger.info("Shipment insured successfully.")
-        return shipment_to_dict(insured_shipment)
+        return insured_shipment
+
     except ValueError:
         raise
     except Exception as exc:
         raise RuntimeError(f"Shipment insurance failed: {exc}") from exc
 
 
-def track_shipment(tracking_code: str, carrier: Optional[str] = None) -> Dict[str, Any]:
+def track_shipment(tracking_code: str, carrier: Optional[str] = None):
     """
-    Register a tracker in EasyPost using a tracking code.
-
-    Args:
-        tracking_code: Shipment tracking code.
-        carrier: Optional carrier name.
-
-    Returns:
-        Dict[str, Any]: Structured tracker dictionary.
-
-    Raises:
-        ValueError: If tracking_code is missing.
-        RuntimeError: If tracking setup fails.
+    Register a tracker and return clean JSON response.
     """
     if not tracking_code:
         raise ValueError("tracking_code is required.")
@@ -564,13 +431,27 @@ def track_shipment(tracking_code: str, carrier: Optional[str] = None) -> Dict[st
             )
 
         logger.info("Tracker created successfully.")
-        return tracker_to_dict(tracker)
+
+        return {
+            "tracking_code": tracker.tracking_code,
+            "status": tracker.status,
+            "carrier": tracker.carrier,
+            "est_delivery_date": tracker.est_delivery_date,
+            "history": [
+                {
+                    "status": detail.status,
+                    "message": detail.message,
+                    "datetime": detail.datetime
+                }
+                for detail in tracker.tracking_details
+            ]
+        }
 
     except ValueError:
         raise
+
     except Exception as exc:
         raise RuntimeError(f"Tracking setup failed: {exc}") from exc
-
 
 # -------------------------------------------------------------------
 # Structured Output Helpers
@@ -578,12 +459,6 @@ def track_shipment(tracking_code: str, carrier: Optional[str] = None) -> Dict[st
 def safe_float(value: Any) -> Optional[float]:
     """
     Convert a value to float safely.
-
-    Args:
-        value: Any incoming value.
-
-    Returns:
-        Optional[float]: Float value or None.
     """
     try:
         if value is None or value == "":
@@ -593,37 +468,44 @@ def safe_float(value: Any) -> Optional[float]:
         return None
 
 
+def _get_value(obj: Any, key: str) -> Any:
+    """
+    Safely get a value from either dict or object.
+    """
+    if isinstance(obj, dict):
+        return obj.get(key)
+    return getattr(obj, key, None)
+
+
 def address_to_dict(address_obj: Any) -> Dict[str, Any]:
     """
     Convert an EasyPost address object into a clean dictionary.
     """
-    if isinstance(address_obj, dict):
-        return {
-            "id": address_obj.get("id"),
-            "name": address_obj.get("name"),
-            "company": address_obj.get("company"),
-            "street1": address_obj.get("street1"),
-            "street2": address_obj.get("street2"),
-            "city": address_obj.get("city"),
-            "state": address_obj.get("state"),
-            "zip": address_obj.get("zip"),
-            "country": address_obj.get("country"),
-            "residential": address_obj.get("residential"),
-            "verifications": address_obj.get("verifications"),
-        }
+    def serialize_verifications(verifications):
+        if verifications is None:
+            return None
+        if isinstance(verifications, dict):
+            return verifications
+        if hasattr(verifications, "__dict__"):
+            return {
+                key: value
+                for key, value in verifications.__dict__.items()
+                if not key.startswith("_")
+            }
+        return str(verifications)
 
     return {
-        "id": getattr(address_obj, "id", None),
-        "name": getattr(address_obj, "name", None),
-        "company": getattr(address_obj, "company", None),
-        "street1": getattr(address_obj, "street1", None),
-        "street2": getattr(address_obj, "street2", None),
-        "city": getattr(address_obj, "city", None),
-        "state": getattr(address_obj, "state", None),
-        "zip": getattr(address_obj, "zip", None),
-        "country": getattr(address_obj, "country", None),
-        "residential": getattr(address_obj, "residential", None),
-        "verifications": getattr(address_obj, "verifications", None),
+        "id": _get_value(address_obj, "id"),
+        "name": _get_value(address_obj, "name"),
+        "company": _get_value(address_obj, "company"),
+        "street1": _get_value(address_obj, "street1"),
+        "street2": _get_value(address_obj, "street2"),
+        "city": _get_value(address_obj, "city"),
+        "state": _get_value(address_obj, "state"),
+        "zip": _get_value(address_obj, "zip"),
+        "country": _get_value(address_obj, "country"),
+        "residential": _get_value(address_obj, "residential"),
+        "verifications": serialize_verifications(_get_value(address_obj, "verifications")),
     }
 
 
@@ -631,23 +513,13 @@ def rate_to_dict(rate: Any) -> Dict[str, Any]:
     """
     Convert a rate object into a clean dictionary.
     """
-    if isinstance(rate, dict):
-        return {
-            "id": rate.get("id"),
-            "carrier": rate.get("carrier"),
-            "service": rate.get("service"),
-            "rate": safe_float(rate.get("rate")),
-            "currency": rate.get("currency"),
-            "delivery_days": rate.get("delivery_days"),
-        }
-
     return {
-        "id": getattr(rate, "id", None),
-        "carrier": getattr(rate, "carrier", None),
-        "service": getattr(rate, "service", None),
-        "rate": safe_float(getattr(rate, "rate", None)),
-        "currency": getattr(rate, "currency", None),
-        "delivery_days": getattr(rate, "delivery_days", None),
+        "id": _get_value(rate, "id"),
+        "carrier": _get_value(rate, "carrier"),
+        "service": _get_value(rate, "service"),
+        "rate": safe_float(_get_value(rate, "rate")),
+        "currency": _get_value(rate, "currency"),
+        "delivery_days": _get_value(rate, "delivery_days"),
     }
 
 
@@ -655,29 +527,17 @@ def shipment_to_dict(shipment: Any) -> Dict[str, Any]:
     """
     Convert a shipment object into a structured dictionary.
     """
-    if isinstance(shipment, dict):
-        return {
-            "shipment_id": shipment.get("shipment_id") or shipment.get("id"),
-            "status": shipment.get("status"),
-            "tracking_code": shipment.get("tracking_code"),
-            "label_url": shipment.get("label_url"),
-            "from_address": shipment.get("from_address"),
-            "to_address": shipment.get("to_address"),
-            "selected_rate": shipment.get("selected_rate"),
-            "rates": shipment.get("rates", []),
-        }
-
-    from_address_obj = getattr(shipment, "from_address", None)
-    to_address_obj = getattr(shipment, "to_address", None)
-    selected_rate_obj = getattr(shipment, "selected_rate", None)
-    rates_obj = getattr(shipment, "rates", []) or []
-    postage_label = getattr(shipment, "postage_label", None)
+    from_address_obj = _get_value(shipment, "from_address")
+    to_address_obj = _get_value(shipment, "to_address")
+    selected_rate_obj = _get_value(shipment, "selected_rate")
+    rates_obj = _get_value(shipment, "rates") or []
+    postage_label = _get_value(shipment, "postage_label")
 
     return {
-        "shipment_id": getattr(shipment, "id", None),
-        "status": getattr(shipment, "status", None),
-        "tracking_code": getattr(shipment, "tracking_code", None),
-        "label_url": getattr(postage_label, "label_url", None) if postage_label else None,
+        "shipment_id": _get_value(shipment, "shipment_id") or _get_value(shipment, "id"),
+        "status": _get_value(shipment, "status"),
+        "tracking_code": _get_value(shipment, "tracking_code"),
+        "label_url": _get_value(postage_label, "label_url") if postage_label else None,
         "from_address": address_to_dict(from_address_obj) if from_address_obj else None,
         "to_address": address_to_dict(to_address_obj) if to_address_obj else None,
         "selected_rate": rate_to_dict(selected_rate_obj) if selected_rate_obj else None,
@@ -689,41 +549,31 @@ def tracker_to_dict(tracker: Any) -> Dict[str, Any]:
     """
     Convert a tracker object into a structured dictionary.
     """
-    if isinstance(tracker, dict):
-        return {
-            "tracker_id": tracker.get("tracker_id") or tracker.get("id"),
-            "tracking_code": tracker.get("tracking_code"),
-            "status": tracker.get("status"),
-            "carrier": tracker.get("carrier"),
-            "public_url": tracker.get("public_url"),
-        }
-
     return {
-        "tracker_id": getattr(tracker, "id", None),
-        "tracking_code": getattr(tracker, "tracking_code", None),
-        "status": getattr(tracker, "status", None),
-        "carrier": getattr(tracker, "carrier", None),
-        "public_url": getattr(tracker, "public_url", None),
+        "tracker_id": _get_value(tracker, "tracker_id") or _get_value(tracker, "id"),
+        "tracking_code": _get_value(tracker, "tracking_code"),
+        "status": _get_value(tracker, "status"),
+        "carrier": _get_value(tracker, "carrier"),
+        "public_url": _get_value(tracker, "public_url"),
     }
 
 
 # -------------------------------------------------------------------
 # Print Helper
 # -------------------------------------------------------------------
-def print_shipment_details(shipment: Dict[str, Any]) -> None:
+def print_shipment_details(shipment: Any) -> None:
     """
     Print shipment details in a readable and safe way.
-
-    Args:
-        shipment: Structured shipment dictionary.
     """
-    print("\nShipment Details:")
-    print(f"Shipment ID   : {shipment.get('shipment_id')}")
-    print(f"Status        : {shipment.get('status')}")
-    print(f"Tracking Code : {shipment.get('tracking_code') or 'Not available'}")
-    print(f"Label URL     : {shipment.get('label_url') or 'Not available'}")
+    shipment_data = shipment_to_dict(shipment)
 
-    selected_rate = shipment.get("selected_rate")
+    print("\nShipment Details:")
+    print(f"Shipment ID   : {shipment_data.get('shipment_id')}")
+    print(f"Status        : {shipment_data.get('status')}")
+    print(f"Tracking Code : {shipment_data.get('tracking_code') or 'Not available'}")
+    print(f"Label URL     : {shipment_data.get('label_url') or 'Not available'}")
+
+    selected_rate = shipment_data.get("selected_rate")
     if selected_rate:
         print(
             "Selected Rate : "
@@ -748,35 +598,9 @@ def process_shipment(
     preferred_carriers: Optional[List[str]] = None,
     max_delivery_days: Optional[int] = None,
     preferred_service: Optional[str] = None,
-) -> Dict[str, Any]:
+):
     """
-    End-to-end shipment workflow:
-    - validate parcel
-    - detect international shipment
-    - create customs info if needed
-    - create shipment
-    - select best rate
-    - buy label
-    - optionally insure
-
-    Args:
-        from_address: Sender address.
-        to_address: Receiver address.
-        parcel: Parcel details.
-        customs_items: Optional customs items for international shipment.
-        customs_signer: Required for international customs creation.
-        insurance_amount: Optional insurance amount.
-        verify_addresses: Whether to verify addresses before shipment.
-        preferred_carriers: Optional allowed carriers.
-        max_delivery_days: Optional delivery limit.
-        preferred_service: Optional exact service name.
-
-    Returns:
-        Dict[str, Any]: Final shipment dictionary after purchase.
-
-    Raises:
-        ValueError: If required inputs are invalid.
-        RuntimeError: If any EasyPost step fails.
+    End-to-end shipment workflow returning RAW purchased shipment object.
     """
     validate_parcel(parcel)
 
@@ -811,7 +635,7 @@ def process_shipment(
     )
 
     purchased_shipment = buy_label(
-        shipment_id=shipment["shipment_id"],
+        shipment_id=getattr(shipment, "id", None),
         rate=best_rate,
         insurance_amount=insurance_amount,
     )
