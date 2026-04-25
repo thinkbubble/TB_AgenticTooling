@@ -110,7 +110,7 @@ def main():
             verify_addresses=False,
         )
 
-        print(f"\nStep 3: Shipment created successfully: {shipment['shipment_id']}")
+        print(f"\nStep 3: Shipment created successfully: {getattr(shipment, 'id', None)}")
         print_shipment_details(shipment)
         pretty_print("Shipment JSON", shipment)
 
@@ -129,7 +129,7 @@ def main():
         print("\nStep 5: Buying label...")
 
         bought_shipment = buy_label(
-            shipment_id=shipment["shipment_id"],
+            shipment_id=getattr(shipment, "id", None),
             rate=selected_rate,
             insurance_amount=insurance_amount,
         )
@@ -138,7 +138,7 @@ def main():
         print_shipment_details(bought_shipment)
         pretty_print("Bought Shipment JSON", bought_shipment)
 
-        tracking_code = bought_shipment.get("tracking_code")
+        tracking_code = getattr(bought_shipment, "tracking_code", None)
 
         print("\nStep 6: Tracking setup...")
 
