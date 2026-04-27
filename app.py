@@ -1,17 +1,27 @@
 from flask import Flask, request, jsonify
-from dotenv import load_dotenv
-import os
-import easypost
-
 from team_easypost.project_functions import create_shipment, track_shipment
+from twilio.twiml.messaging_response import MessagingResponse
+from twilio.twiml.voice_response import VoiceResponse
+from dotenv import load_dotenv
+import easypost
+import stripe
+import os
 
+
+# Load env
 load_dotenv()
+
 
 app = Flask(__name__)
 
+
+# Stripe config
+stripe.api_key = os.getenv("MY_STRIPE_SECRET_KEY")
+endpoint_secret = os.getenv("STRIPE_ENDPOINT_SECRET")
+
+# Easypost
 EASYPOST_API_KEY = os.getenv("EASYPOST_API_KEY")
 API_SECRET = os.getenv("API_SECRET", "test123")
-
 client = easypost.EasyPostClient(EASYPOST_API_KEY)
 
 
@@ -134,6 +144,49 @@ def health():
         "status": "running",
         "environment": "test_mode_only"
     }), 200
+
+@app.route('/webhook/twilio', methods=['GET', 'POST'])
+def webhook():
+    sender_number = request.values.get('From', 'Unknown')
+    incoming_msg = request.values.get('Body', '')
+    print(f"Received a text from {sender_number}: {incoming_msg}")
+    response = MessagingResponse()
+    response.message("Hello! I received your text message")
+    return str(response)
+
+@app.route("/webhook/answercall", methods=['GET', 'POST'])
+def webhook_answercall():
+    caller_number = request.values.get('From', 'Unknown Number')
+    print(f" Incoming call detected from: {caller_number}")
+    response = VoiceResponse()
+    response.say("Hello! Have a great day")
+    return str(response)
+
+
+@app.route('/', methods=['GET'])
+def health():
+    return jsonify({"status": "running"}), 200
+
+
+
+@app.route("/stripe-webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get("Stripe-Signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+    from team_stripe.project_functions import handle_stripe_event
+    handle_stripe_event(event)
+
+    return jsonify({"status": "success"}), 200
+
+
 
 
 @app.route("/shipments/create", methods=["POST"])
