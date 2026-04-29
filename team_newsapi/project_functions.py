@@ -1,14 +1,19 @@
 
 from dotenv import load_dotenv
 # EVERYTHING in helper will be imported
-from helper import *
+#from helper import *
 #from new_helper import name_a_function
 import os
+import requests
 from newsapi import NewsApiClient 
 
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY") #load api key from .env
+KLOE_API_KEY = os.getenv("KLOE_API_KEY") #load api key from .env
+
+KLOE_BASE_URL = "https://kloeai.com/v1/generate"
+
 
 # YOUR CUSTOM WORK WILL GO HERE
 # Naming convention should be robust
@@ -47,3 +52,81 @@ def fetch_sources(category=None, language="en", country=None): #get avilable new
     )
     return response.get("sources", []) #returns list of sources, empty list if none found
         
+
+def summarize_article(article): #takes a news article dict and uses KloeAI claude to generate a 2-3 sentence summary
+    title = article.get("title", "")
+    content = article.get("content", "") or article.get("description", "")
+
+    payload = {
+        "goal": "llm",
+        "model": "anthropic - claude-sonnet-4-5",
+        "prompt": f"summarize the following news article in 2-3 sentences:\n\nTitle: {title}\n\nContent: {content}"
+    }
+
+    headers = {
+    "X-API-Key": os.getenv("KLOE_API_KEY"),
+    "Content-Type": "application/json"
+    }
+    
+    response = requests.post(KLOE_BASE_URL, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json() # returns summary response from KloeAI
+
+
+def build_video_prompt(summary, duration=15, quality="480p"): # takes a summary and returns a tiktok/reel style video prompt dict
+    payload = {
+        "goal":  "llm",
+        "model": "anthropic - claude-sonnet-4-5",
+        "prompt": f"Turn this news summary into a short, enegaging TikTok/Reel style video script prompt:\n\n{summary}\n\nKeep it punchy and under {duration} seconds."
+    }
+
+    headers = {
+    "X-API-Key": os.getenv("KLOE_API_KEY"),
+    "Content-Type": "application/json"
+    }
+
+    response = requests.post(KLOE_BASE_URL, headers=headers, json=payload)
+    response.raise_for_status()
+    result = response.json()
+
+    return {
+        "prompt": result,
+        "duration": duration,
+        "quality": quality
+    } # returns dict containing video prompt, duration, and quality
+
+
+def generate_news_briefing_video(video_prompt_dict): # sends a video prompt dict to KloeAI grok and returns the generated video response
+    payload = {
+        "goal": "video",
+        "model": "grok - grok-imagine-video",
+        "prompt": video_prompt_dict.get("prompt", ""),
+        "quality": video_prompt_dict.get("quality", "480p"),
+        "duration": video_prompt_dict.get("duration", 16)
+    }
+
+    headers = {
+    "X-API-Key": os.getenv("KLOE_API_KEY"),
+    "Content-Type": "application/json"
+    }
+    response = requests.post(KLOE_BASE_URL, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json() # returns video generation response from KloeAI
+
+
+def text_to_speech(summary, voice="alloy", language="en"): # takes an article summary and converts it to audio using KloeAI gpt
+    payload = {
+        "goal": "tts",
+        "model": "openai - gpt-4o-mini-tts",
+        "text": summary,
+        "language": language    
+    }
+
+    payload["voice"] = voice
+    headers = {
+    "X-API-Key": os.getenv("KLOE_API_KEY"),
+    "Content-Type": "application/json"
+    }
+    response = requests.post(KLOE_BASE_URL, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json() # returns audio response from KloeAI
