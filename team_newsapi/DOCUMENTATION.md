@@ -53,3 +53,51 @@
             - Country code
             - Example: US, UK, etc.
     - Returns a response containing available news sources
+
+- Function 4: summarize_article
+    - Definition: Takes a news article and uses KloeAI to generate a short 2-3 sentence summary
+    - Params:
+        - Article
+        - Must contain at least a title and description field
+        - Example: article dict returned from fetch_top_headlines or fetch_everything
+    - Returns a summary response from KloeAI
+
+- Function 5: build_video_prompt
+    - Definition: Takes an article summary and transforms it inot a tiktok/reel style video prompt
+    - Params:
+        - Summary
+            - A short text summary of a news article
+            - Example: output from summarize_article
+        - Duration
+            - Length of the video in seconds
+            - Default: 15s
+            - Example: 15, 30, 60
+        - Quality
+            - Video resolution
+            - Default: 480p
+            - Options: 480p, 720p
+    - Returns a dictionary containing the video prompt, duration, and quality
+
+- Function 6: generate_news_briefing_video
+    - Definition: sends a video prompt to KloeAI's video API and returns a generated video response
+    - Params:
+        - Video Prompt Dict
+            - A dictionary containing video generation parameters
+            - Example: output from build_video_prompt
+    - Returns a video generation response from KloeAI
+
+- Function 7: text_to_speech
+    - Definition: Takes a news article summary and converts it to audio using KloeAI's text-to-speech
+    - Params:
+        - Summary
+            - Text to convert to speech
+            - Example: output from summarize_article
+        - Voice
+            - Voice to use for audio generation
+            - Default: alloy
+            - Options: alloy, ash, ballad, coral, etc.
+        - Language
+            - Language code for the audio
+            - Default: en
+            - Example: en, es, fr, de, etc.
+    - Returns an audio response from KloeAI
