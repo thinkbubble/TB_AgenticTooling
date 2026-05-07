@@ -1,6 +1,7 @@
 
 import time
 import json
+import json
 
 from project_functions import (
     initiate_voice_call,
@@ -24,7 +25,27 @@ def test_voice():
             destination_phone_number=my_cell_number,
             message_text="Hello Meghana, your Twilio integration is working!"
         )
+        call = initiate_voice_call(
+            destination_phone_number=my_cell_number,
+            message_text="Hello Meghana, your Twilio integration is working!"
+        )
 
+        if call and call.get("success"):
+            print(f"Voice call successful. SID: {call.get('sid')}")
+        else:
+            print("Voice call failed. Check Twilio credentials or phone number.")
+
+        return call
+
+    except Exception as e:
+        print(f"Voice test error: {e}")
+        return None
+
+
+def test_text_message_workflow():
+    results = {}
+
+    try:
         if call and call.get("success"):
             print(f"Voice call successful. SID: {call.get('sid')}")
         else:
@@ -63,8 +84,27 @@ def test_text_message_workflow():
             print(f"SMS INITIATED. SID: {sid}")
             print("STATUS:", dispatched_message.get("status"))
 
+        results["dispatched_message"] = dispatched_message
+
+        print("\nSMS Response:")
+        print(json.dumps(dispatched_message, indent=2))
+
+        # ✔ SAFE CHECK
+        if not dispatched_message or not isinstance(dispatched_message, dict):
+            results["error"] = "No valid response from Twilio"
+            return results
+
+        sid = dispatched_message.get("sid")
+
+        if dispatched_message.get("success") and sid:
+
+            print(f"SMS INITIATED. SID: {sid}")
+            print("STATUS:", dispatched_message.get("status"))
+
             time.sleep(twilio_test_config["network_delay_seconds"])
 
+            results["updated_message_details"] = retrieve_message_details(sid)
+            results["recent_messages"] = retrieve_recent_messages_list(limit=3)
             results["updated_message_details"] = retrieve_message_details(sid)
             results["recent_messages"] = retrieve_recent_messages_list(limit=3)
 
@@ -77,6 +117,24 @@ def test_text_message_workflow():
         results["error"] = str(e)
 
     return results
+
+def test_email():
+    print("\n--- Email Test ---\n")
+
+    result = send_email(
+        destination_email="meghana.bellamkonda.20@gmail.com",
+        subject="Integration Test",
+        content="Hello Meghana, email integration is working!"
+    )
+
+    if result:
+        print("Email Result:")
+        print(json.dumps(result, indent=2))
+    else:
+        print("Email failed or returned None")
+
+    return result
+           
 
 def test_email():
     print("\n--- Email Test ---\n")

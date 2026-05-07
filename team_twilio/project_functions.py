@@ -139,6 +139,8 @@ def send_email(destination_email: str, subject: str, content: str):
         )
 
     except Exception as e:
+
         return build_response(False, "sendgrid", "email", error=str(e))
     
+
 
