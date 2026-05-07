@@ -1,104 +1,144 @@
+
 import os
-from typing import Any, Dict, Optional, List
-import json
+from typing import Optional, Dict, Any
 from twilio.rest import Client
-from twilio.base.exceptions import TwilioRestException
+from twilio.twiml.voice_response import VoiceResponse
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from dotenv import load_dotenv
 
 load_dotenv()
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-DEFAULT_TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER") 
+TWILIO_PHONE = os.getenv("TWILIO_PHONE_NUMBER")
 
-if not TWILIO_ACCOUNT_SID or not TWILIO_AUTH_TOKEN:
-    raise ValueError("TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN not found in .env file")
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+EMAIL_FROM = os.getenv("EMAIL_FROM")
 
-
-def initialize_twilio_api_client() -> Client:
-    return Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 
-def send_text_message(
-    destination_phone_number: str, 
-    message_body_content: str, 
-    sender_phone_number: Optional[str] = None) -> Any:
-    twilio_api_client = initialize_twilio_api_client()
-    resolved_sender_phone_number = sender_phone_number or DEFAULT_TWILIO_PHONE_NUMBER
+def build_response(success: bool, provider: str, msg_type: str,
+                   sid=None, status=None, message=None, error=None, data=None):
+
+    return {
+        "success": success,
+        "provider": provider,
+        "type": msg_type,
+        "sid": sid,
+        "status": status,
+        "message": message,
+        "error": error,
+        "data": data
+    }
+
+
+def send_text_message(destination_phone_number: str, message_body_content: str):
 
     try:
-        created_text_message = twilio_api_client.messages.create(
+        msg = client.messages.create(
             to=destination_phone_number,
-            from_=resolved_sender_phone_number,
+            from_=TWILIO_PHONE,
             body=message_body_content
         )
-        return created_text_message
-    except TwilioRestException as twilio_api_error:
-        print(f"Twilio API Error sending text message: {twilio_api_error}")
-        return None
 
-
-def initiate_voice_call(
-    destination_phone_number: str, 
-    twiml_instructions_url: str, 
-    sender_phone_number: Optional[str] = None) -> Any:
-    twilio_api_client = initialize_twilio_api_client()
-    resolved_sender_phone_number = sender_phone_number or DEFAULT_TWILIO_PHONE_NUMBER
-
-    try:
-        created_voice_call = twilio_api_client.calls.create(
-            to=destination_phone_number,
-            from_=resolved_sender_phone_number,
-            url=twiml_instructions_url
+        return build_response(
+            True, "twilio", "sms",
+            sid=msg.sid,
+            status=msg.status,
+            message="SMS sent successfully"
         )
-        return created_voice_call
-    except TwilioRestException as twilio_api_error:
-        print(f"Twilio API Error making voice call: {twilio_api_error}")
-        return None
+
+    except Exception as e:
+        return build_response(False, "twilio", "sms", error=str(e))
 
 
-def retrieve_message_details(unique_message_identifier: str) -> Any:
-    twilio_api_client = initialize_twilio_api_client()
-    
+def initiate_voice_call(destination_phone_number: str, message_text: str):
+
     try:
-        retrieved_message_object = twilio_api_client.messages(unique_message_identifier).fetch()
-        return retrieved_message_object
-    except TwilioRestException as twilio_api_error:
-        print(f"Twilio API Error fetching message details: {twilio_api_error}")
-        return None
+        vr = VoiceResponse()
+        vr.say(message_text, voice="alice")
+
+        call = client.calls.create(
+            to=destination_phone_number,
+            from_=TWILIO_PHONE,
+            twiml=str(vr)
+        )
+
+        return build_response(
+            True, "twilio", "voice",
+            sid=call.sid,
+            status=call.status,
+            message="Call initiated"
+        )
+
+    except Exception as e:
+        return build_response(False, "twilio", "voice", error=str(e))
 
 
-def retrieve_recent_messages_list(maximum_messages_to_retrieve: int = 20) -> List[Any]:
-    twilio_api_client = initialize_twilio_api_client()
-    
+
+def retrieve_message_details(sid: str):
+
     try:
-        recent_messages_list = twilio_api_client.messages.list(limit=maximum_messages_to_retrieve)
-        return recent_messages_list
-    except TwilioRestException as twilio_api_error:
-        print(f"Twilio API Error listing recent messages: {twilio_api_error}")
-        return []
+        msg = client.messages(sid).fetch()
 
-def display_message_status_details(twilio_message_object) -> None:
-    if not twilio_message_object:
-        print("No message data provided.")
-        return
-        
-    print("\nMessage Details:")
-    print("-" * 60)
-    print(f"Unique Identifier : {twilio_message_object.sid}")
-    print(f"Destination       : {twilio_message_object.to}")
-    print(f"Sender            : {twilio_message_object.from_}")
-    print(f"Current Status    : {twilio_message_object.status}")
-    print(f"Body Content      : {twilio_message_object.body}")
-    print("\n RAW API RESPONSE PAYLOAD:")
-    print("-" * 60)
+        return build_response(
+            True, "twilio", "sms_detail",
+            sid=msg.sid,
+            status=msg.status,
+            message=msg.body
+        )
+
+    except Exception as e:
+        return build_response(False, "twilio", "sms_detail", error=str(e))
+
+
+def retrieve_recent_messages_list(limit: int = 5):
+
+    try:
+        msgs = client.messages.list(limit=limit)
+
+        data = [
+            {
+                "sid": m.sid,
+                "to": m.to,
+                "from": m.from_,
+                "status": m.status,
+                "body": m.body
+            }
+            for m in msgs
+        ]
+
+        return build_response(
+            True, "twilio", "sms_history",
+            data=data
+        )
+
+    except Exception as e:
+        return build_response(False, "twilio", "sms_history", error=str(e))
+
+
+def send_email(destination_email: str, subject: str, content: str):
+
+    try:
+        mail = Mail(
+            from_email=EMAIL_FROM,
+            to_emails=destination_email,
+            subject=subject,
+            plain_text_content=content
+        )
+
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        res = sg.send(mail)
+
+        return build_response(
+            True, "sendgrid", "email",
+            status=str(res.status_code),
+            message="Email sent successfully"
+        )
+
+    except Exception as e:
+        return build_response(False, "sendgrid", "email", error=str(e))
     
-    raw_data = getattr(twilio_message_object, '_properties', {})
-    
-    if raw_data:
-        formatted_json = json.dumps(raw_data, indent=4, default=str)
-        print(formatted_json)
-    else:
-        print("No raw data available for this object.")
-    
-    print("-" * 60)
+

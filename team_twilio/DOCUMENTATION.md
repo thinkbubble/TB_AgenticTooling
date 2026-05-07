@@ -1,143 +1,250 @@
-Functions
+# Twilio Communication Integration System
+
+---
+
+## Project Summary
+- Flask-based communication system for SMS, voice, and email
+- Uses Twilio API for SMS and voice call handling
+- Uses SendGrid API for email delivery
+- Supports incoming webhooks (SMS, calls, email)
+- Includes automated testing script for API verification
+- Built for end-to-end communication workflow testing
+
+---
+
+## Technologies Used
+- Python
+- Flask
+- Twilio API
+- SendGrid API
+- dotenv
 
-get_twilio_client
+---
 
-Definition: Creates and returns an authenticated Twilio REST client using credentials from .env.
+## Project Structure
+- app.py → Flask webhook server (SMS, calls, email)
+- functions.py → API integration layer (Twilio + SendGrid)
+- testing.py → Automated test execution script
+- .env → Environment variables for API keys
 
-Params:
+---
 
-No external params
+## Run Instructions
 
-Returns:
+### Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Start Flask Server
+```bash
+python app.py
+```
 
-Twilio Client object
+### Run Tests
+```bash
+python testing.py
+```
 
-handle_twilio_webhook
+---
 
-Definition: Processes incoming HTTP POST requests from Twilio when an SMS is received.
+## Output Locations
+- SMS results → terminal logs
+- Voice call results → terminal logs
+- Email results → terminal logs
+- Webhook activity → Flask console output
+- Test summary → JSON printed in terminal
 
-Params:
+---
 
-From: The sender's phone number
+## Success Indicators
+- SMS sent successfully (SID generated)
+- Voice call received successfully
+- Email delivered successfully
+- Flask webhook logs appear in terminal
+- Testing script prints JSON summary without errors
 
-Body: The text content of the message
+---
 
-Returns:
+## Common Failures
+- Invalid Twilio SID/Auth Token
+- Unverified phone number (Twilio trial restriction)
+- Missing SendGrid API key
+- Flask server not running
+- Incorrect or missing .env variables
 
-TwiML XML response (auto-reply)
+---
 
-Console log of sender and message
+## End-to-End Flow
+- Run testing.py
+- SMS request sent via Twilio API
+- Voice call triggered via Twilio Voice API
+- Email sent via SendGrid API
+- Incoming webhooks handled by Flask
+- TwiML responses returned for SMS/calls
+- Logs printed in terminal
+- Final test results displayed as JSON
 
-send_sms
+---
 
-Definition: Sends an outbound SMS or MMS message to a specified recipient.
+## Webhook Endpoints
+- /webhook/message → Handles incoming SMS
+- /webhook/answercall → Handles incoming voice calls
+- /receive-email → Handles incoming email data
 
-Params:
+---
 
-to: Recipient number (E.164)
+## Configuration (.env)
 
-from: Your Twilio number
+| Name | Purpose | Example | Required |
+|------|--------|---------|----------|
+| TWILIO_ACCOUNT_SID | Twilio account ID | ACxxxxx | Y |
+| TWILIO_AUTH_TOKEN | Twilio authentication token | xxxxx | Y |
+| TWILIO_PHONE_NUMBER | Twilio registered number | +1561xxxx | Y |
+| SENDGRID_API_KEY | SendGrid API key | SG.xxxx | Y |
+| EMAIL_FROM | Verified sender email | test@gmail.com | Y |
 
-body: Message text
+---
 
-Returns:
+## Functions Index
 
-Message SID
+---
 
-Delivery Status
+## app.py
 
-create_phone_number
+### sms_webhook()
+- Handles incoming SMS messages
+- Inputs: HTTP request data
+- Outputs: TwiML XML response
+- Errors: missing request parameters
 
-Definition: Searches for and purchases a new Twilio phone number based on location criteria.
+---
 
-Params:
+### answercall_webhook()
+- Handles incoming voice calls
+- Inputs: HTTP request data
+- Outputs: VoiceResponse XML
+- Errors: missing caller number
 
-country: (e.g., US, UK)
+---
 
-country_code: (e.g., +1, +44)
+### receive_email()
+- Handles incoming email webhook data
+- Inputs: form data (from, subject, text)
+- Outputs: HTTP 200 OK response
+- Errors: missing email fields
 
-area_code: 3-digit local prefix
+---
 
-Returns:
+## functions.py
 
-Purchased Phone Number (E.164)
+### send_text_message(destination_phone_number, message_body_content)
+- Sends SMS via Twilio API
+- Inputs: phone number, message text
+- Outputs: dictionary response (SID, status, success)
+- Errors: invalid number, API failure
 
-SID of the new resource
+---
 
-make_voice_call
+### initiate_voice_call(destination_phone_number, message_text)
+- Initiates voice call using Twilio
+- Inputs: phone number, spoken message
+- Outputs: dictionary response (call SID, status)
+- Errors: invalid number, API failure
 
-Definition: Initiates an outbound voice call and executes TwiML instructions.
+---
 
-Params:
+### retrieve_message_details(sid)
+- Retrieves details of a specific SMS
+- Inputs: message SID
+- Outputs: message status dictionary
+- Errors: invalid SID, message not found
 
-to: Recipient number
+---
 
-twiml: Instructions (e.g., <Say>) or a URL
+### retrieve_recent_messages_list(limit)
+- Fetches recent SMS messages
+- Inputs: limit (number of messages)
+- Outputs: list of message dictionaries
+- Errors: API failure
 
-Returns:
+---
 
-Call SID
+### send_email(destination_email, subject, content)
+- Sends email using SendGrid API
+- Inputs: email, subject, message body
+- Outputs: API response dictionary
+- Errors: invalid API key, sender not verified
 
-Call Status (queued/initiated)
+---
 
-fetch_message_details
+### build_response(success, provider, msg_type, sid, status, message, error, data)
+- Standard response formatter
+- Inputs: success flag, provider, type, metadata
+- Outputs: structured dictionary response
+- Errors: none
 
-Definition: Retrieves metadata for a specific message using its unique SID.
+---
 
-Params:
+## testing.py
 
-message_sid: The unique ID of the SMS
+### test_voice()
+- Tests voice call functionality
+- Inputs: predefined phone number
+- Outputs: call response dictionary
+- Errors: Twilio API failure
 
-Returns:
+---
 
-Date Sent
+### test_text_message_workflow()
+- Tests full SMS workflow (send + retrieve)
+- Inputs: test configuration values
+- Outputs: SMS response + message history
+- Errors: SID failure, API failure
 
-Error Code (if any)
+---
 
-Price/Currency
+### test_email()
+- Tests SendGrid email sending
+- Inputs: predefined email content
+- Outputs: email response dictionary
+- Errors: authentication failure
 
-Workflow
-Incoming SMS (Webhook)
+---
 
-Received POST request
+## Notes / Assumptions
+- Twilio account is active and configured
+- SendGrid sender email is verified
+- Internet connection required for APIs
+- Flask runs in debug mode
+- Phone numbers use E.164 format
 
-Extract From and Body
+---
 
-Log to Terminal
+## Data Assumptions
+- Message SIDs are unique identifiers
+- Email addresses are valid format
+- API responses are JSON-based
+- Webhooks send standard Twilio payloads
 
-Generate TwiML Response
+---
 
-Return XML to Twilio
+## Rate Limits
+- Twilio trial accounts restrict messaging
+- SendGrid free tier limits daily emails
+- Flask debug server not production ready
 
-Outbound Notification
+---
 
-Load .env Config
+## Known Limitations
+- No database storage
+- No frontend UI
+- Console-based logging only
+- Trial account restrictions apply
 
-Validate Recipient Number
+---
 
-send_sms
-
-Capture Message SID
-
-Track Status via fetch_message_details
-
-Provisioning Number
-
-Select Country/Area Code
-
-Search Available Numbers
-
-create_phone_number
-
-Update .env with new number
-
-Endpoints Used
-Messages API: Sending and retrieving SMS/MMS.
-
-Calls API: Initiating and managing voice calls.
-
-IncomingPhoneNumbers API: Provisioning new numbers.
-
-AvailablePhoneNumbers API: Searching for numbers to buy.
-
-TwiML: XML instructions for programmable logic.
+## Future Improvements
+- Add database storage (MongoDB/MySQL)
+- Build frontend dashboard (React/Flask UI)
+- Add retry mechanism for failed API requests
