@@ -1,14 +1,13 @@
 import time
-
+import json
 
 from project_functions import (
     initiate_voice_call,
     send_text_message,
     retrieve_message_details,
     retrieve_recent_messages_list,
-    display_message_status_details
+    send_email
 )
-
 
 twilio_test_config = {
     "target_phone_number": "+15613245868",  
@@ -17,79 +16,99 @@ twilio_test_config = {
 }
 
 def test_voice():
-    print(" Attempting to call your phone")
-    
-    demo_twiml_url = "http://demo.twilio.com/docs/voice.xml"
-    
-    my_cell_number = "+15613245868" 
-
-    call = initiate_voice_call(
-        destination_phone_number=my_cell_number,
-        twiml_instructions_url=demo_twiml_url
-    )
-
-    if call:
-        print(f"Call initiated (Call SID: {call.sid})")
-    else:
-        print("Failed to initiate call")
-
-if __name__ == "__main__":
-    test_voice()
-
-def main():
     try:
-        print("Starting Twilio Communication Workflow\n")
+        my_cell_number = twilio_test_config["target_phone_number"]
 
-        print("Attempting to dispatch text message")
+        call = initiate_voice_call(
+            destination_phone_number=my_cell_number,
+            message_text="Hello Meghana, your Twilio integration is working!"
+        )
+
+        if call and call.get("success"):
+            print(f"Voice call successful. SID: {call.get('sid')}")
+        else:
+            print("Voice call failed. Check Twilio credentials or phone number.")
+
+        return call
+
+    except Exception as e:
+        print(f"Voice test error: {e}")
+        return None
+
+
+def test_text_message_workflow():
+    results = {}
+
+    try:
         dispatched_message = send_text_message(
             destination_phone_number=twilio_test_config["target_phone_number"],
             message_body_content=twilio_test_config["test_message_content"]
         )
 
-        
-        if dispatched_message:
-            print(f"\nText message dispatched successfully! Identifier: {dispatched_message.sid}")
-            display_message_status_details(dispatched_message)
+        results["dispatched_message"] = dispatched_message
 
-             
-            print(f"\nWaiting {twilio_test_config['network_delay_seconds']} seconds for network processing...")
+        print("\nSMS Response:")
+        print(json.dumps(dispatched_message, indent=2))
+
+        # ✔ SAFE CHECK
+        if not dispatched_message or not isinstance(dispatched_message, dict):
+            results["error"] = "No valid response from Twilio"
+            return results
+
+        sid = dispatched_message.get("sid")
+
+        if dispatched_message.get("success") and sid:
+
+            print(f"SMS INITIATED. SID: {sid}")
+            print("STATUS:", dispatched_message.get("status"))
+
             time.sleep(twilio_test_config["network_delay_seconds"])
 
-            
-            print("\nFetching updated message details from the server...")
-            updated_message_details = retrieve_message_details(
-                unique_message_identifier=dispatched_message.sid
-            )
-            
-            if updated_message_details:
-                display_message_status_details(updated_message_details)
-            else:
-                print("Could not retrieve updated message details.")
+            results["updated_message_details"] = retrieve_message_details(sid)
+            results["recent_messages"] = retrieve_recent_messages_list(limit=3)
 
         else:
-            print("\nWorkflow Halted: Failed to dispatch text message.")
-            print("Please ensure your .env variables and verified phone numbers are correct.")
+            results["error"] = dispatched_message.get("error", "SMS failed at Twilio level")
+            results["updated_message_details"] = None
+            results["recent_messages"] = None
 
-        
-        print("\nRetrieving recent message history...")
-        recent_messages_list = retrieve_recent_messages_list(maximum_messages_to_retrieve=3)
-        
-        if recent_messages_list:
-            print("-" * 60)
-            for list_index, historical_message in enumerate(recent_messages_list, start=1):
-                print(
-                    f"[{list_index}] Destination: {historical_message.to} | "
-                    f"Status: {historical_message.status} | "
-                    f"Content snippet: '{historical_message.body[:15]}...'"
-                )
-        else:
-            print("No recent messages found in history.")
+    except Exception as e:
+        results["error"] = str(e)
 
-    
-    except Exception as workflow_execution_error:
-        print("\nAn unexpected error occurred during the Twilio workflow:")
-        print(str(workflow_execution_error))
+    return results
 
+def test_email():
+    print("\n--- Email Test ---\n")
+
+    result = send_email(
+        destination_email="meghana.bellamkonda.20@gmail.com",
+        subject="Integration Test",
+        content="Hello Meghana, email integration is working!"
+    )
+
+    if result:
+        print("Email Result:")
+        print(json.dumps(result, indent=2))
+    else:
+        print("Email failed or returned None")
+
+    return result
 
 if __name__ == "__main__":
-    main()
+
+    print("\n--- Voice Test ---\n")
+    test_voice()
+
+    print("\n--- SMS Workflow Test ---\n")
+    workflow_results = test_text_message_workflow()
+    print(json.dumps(workflow_results, indent=2))
+
+    print("\nEmail Result:")
+    email_result = test_email()
+
+    print("\n===== TEST SUMMARY =====")
+    print(json.dumps({
+        "voice": "completed",
+        "sms": workflow_results,
+        "email": email_result
+    }, indent=2))

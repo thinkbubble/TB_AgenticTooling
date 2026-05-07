@@ -145,22 +145,34 @@ def health():
         "environment": "test_mode_only"
     }), 200
 
-@app.route('/webhook/twilio', methods=['GET', 'POST'])
-def webhook():
+@app.route('/webhook/message', methods=['GET', 'POST'])
+def sms_webhook():
     sender_number = request.values.get('From', 'Unknown')
     incoming_msg = request.values.get('Body', '')
-    print(f"Received a text from {sender_number}: {incoming_msg}")
+    print(f"[SMS RECEIVED] From {sender_number}: {incoming_msg}")
     response = MessagingResponse()
     response.message("Hello! I received your text message")
-    return str(response)
+    return str(response), 200, {'Content-Type': 'text/xml'}
 
 @app.route("/webhook/answercall", methods=['GET', 'POST'])
-def webhook_answercall():
+def answercall_webhook():
     caller_number = request.values.get('From', 'Unknown Number')
-    print(f" Incoming call detected from: {caller_number}")
+    print(f"[CALL RECEIVED] From: {caller_number}")
     response = VoiceResponse()
-    response.say("Hello! Have a great day")
-    return str(response)
+    response.say("Hello! Thanks for calling. Have a great day!", voice='alice')
+    return str(response), 200, {'Content-Type': 'text/xml'}
+
+@app.route('/receive-email', methods=['GET','POST'])
+def receive_email():
+    sender = request.form.get('from')
+    subject = request.form.get('subject')
+    body = request.form.get('text')
+
+    print("From:", sender)
+    print("Subject:", subject)
+    print("Body:", body)
+
+    return "OK", 200
 
 
 @app.route('/', methods=['GET'])
